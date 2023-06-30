@@ -17,8 +17,6 @@ public class PetServiceServiceImpl implements PetServiceService {
 
     @Autowired
     private PetServiceDAO petServiceDAO;
-    @Autowired
-    private ReservationDAO reservationDAO;
     @Override
     public ResultVO getListPetService(String storeId) {
 
@@ -94,11 +92,6 @@ public class PetServiceServiceImpl implements PetServiceService {
         return new ResultVO(RespondStatus.OK, "List of PetServiceVO", petServiceVO);
     }
 
-    @Override
-    public ResultVO getReservedPetService() {
-        List<PetServiceVO> petServiceVOS = reservationDAO.selectReservedService();
-        return new ResultVO(RespondStatus.OK, "List of PetServiceVO", petServiceVOS);
-    }
 
 
 }

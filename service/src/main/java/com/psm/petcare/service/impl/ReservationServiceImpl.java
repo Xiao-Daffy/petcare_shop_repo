@@ -1,6 +1,7 @@
 package com.psm.petcare.service.impl;
 
 import com.psm.petcare.dao.ReservationDAO;
+import com.psm.petcare.entity.PetServiceVO;
 import com.psm.petcare.entity.Reservation;
 import com.psm.petcare.entity.ReservationVO;
 import com.psm.petcare.service.ReservationService;
@@ -215,4 +216,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
 
+    @Override
+    public ResultVO getReservedPetService() {
+        List<PetServiceVO> petServiceVOS = reservationDAO.selectReservedService();
+        return new ResultVO(RespondStatus.OK, "List of PetServiceVO", petServiceVOS);
+    }
 }

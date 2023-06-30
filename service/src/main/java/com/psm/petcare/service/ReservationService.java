@@ -45,4 +45,6 @@ public interface ReservationService {
     public List<Double> getLastMonthDailyReservationProfit(String storeId);
     public List<Double> getCurrentMonthDailyReservationProfit(String storeId);
     public Reservation getTotalSale(String storeId);
+    //
+    public ResultVO getReservedPetService();
 }

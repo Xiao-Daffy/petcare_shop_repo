@@ -62,4 +62,10 @@ public class ReservationController {
 
     }
 
+
+    @GetMapping("/best")
+    public ResultVO getReservedPetService(){
+        return reservationService.getReservedPetService();
+    }
+
 }

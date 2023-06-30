@@ -29,7 +29,6 @@ public interface PetServiceService {
     // query one pet service with store information
     public ResultVO getOnePetServiceAndStore(String pid);
 
-    //
-    public ResultVO getReservedPetService();
+
 
 }

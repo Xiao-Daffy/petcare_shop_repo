@@ -6,6 +6,7 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobHttpHeaders;
 
+import com.psm.blob.AzureStorageConfigure;
 import com.psm.petcare.entity.PetService;
 import com.psm.petcare.entity.Store;
 import com.psm.petcare.service.PetServiceService;
@@ -35,9 +36,23 @@ public class PetServiceController {
 
     @Resource
     private PetServiceService petService;
+    @Resource
+    private AzureStorageConfigure azureStorageConfigure;
+
+    //    @CrossOrigin(origins = "*", allowedHeaders = "*")
+    @PutMapping("/imageupload")
+    public ResultVO fileUpload(@RequestBody MultipartFile[] file) throws IOException {
+        if(file ==null){
+            return new ResultVO(RespondStatus.NO, "Image", null);
+        }else {
+            List<String> strings = azureStorageConfigure.uploadFiles(file);
 
 
+            return new ResultVO(RespondStatus.NO, "Image", strings.get(0));
+        }
+    }
 
+    /* Duplicated Code
 
     @Value("${azure.storage.connection-string}")
     private String connectionString;
@@ -79,7 +94,7 @@ public class PetServiceController {
         }
     }
 
-
+*/
     // get list of pet service by store id
     @GetMapping("/list/{sid}")
     public ResultVO getPetSerivceList(@PathVariable("sid") String sid){
@@ -124,8 +139,4 @@ public class PetServiceController {
         return petService.getOnePetServiceAndStore(pid);
     }
 
-    @GetMapping("/reserved")
-    public ResultVO getReservedPetService(){
-        return petService.getReservedPetService();
-    }
 }

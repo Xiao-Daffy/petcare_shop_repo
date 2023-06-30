@@ -37,79 +37,41 @@ public class OrderServiceImpl implements OrderService  {
      * @return
      */
     @Transactional // make sure all sql operation in addOrder commit at same time,
-    // which mean, if any one of sql operation(eg, add order item fails) then others won't success
-    public ResultVO addOrder(String cids, Order order){
+    public ResultVO addOrder(String cids, Order order) {
+        List<CartVO> cartVOS = getCartItems(cids);
+        boolean isStockAvailable = checkStockAvailability(cartVOS);
 
-
-        //1. get the cart details based on the list of cid
-        String[] arr= cids.split(",");
-        List<Integer> cidsList = new ArrayList<>();
-        for (int i = 0; i < arr.length; i++) {
-            cidsList.add(Integer.parseInt(arr[i]));
-
-        }
-        // list of cart to be checked out
-        List<CartVO> cartVOS = cartDAO.queryListCartByMultiCartId(cidsList);
-
-        // check the stock, even though it already checked,
-        // when user add the cart
-        boolean f = checkStockAvailability(cartVOS);
-
-        if(f){
-            // within stock
-            //step 1:  save the order to 'orders' database, the data needs:
-            // a. userId, receiver info(address) - from front end
-            // b. total price/actual price - from front end
-            // d. payment method - from front end
-            // e. order status: Pending
-            // f. create time
+        if (isStockAvailable) {
+            String orderId = generateOrderId();
+            order.setOrderId(orderId);
             order.setOrderStatus("To Pay");
             order.setCreateTime(new Date());
 
-            // generate the order number by using UUID
-            String orderId = UUID.randomUUID().toString().replace("-", "");
-            order.setOrderId(orderId);
+            int rowsAffected = saveOrder(order);
 
-            // insert to the database
-            int i = orderDAO.insertOrder(order);
-            if(i > 0){
-                //step 2. generate order snap for each cart, store into the 'order_item'
-                for(CartVO cv: cartVOS){
+            if (rowsAffected > 0) {
+                generateOrderItems(cartVOS, orderId);
+                updateProductStock(cartVOS);
+                deleteCarts(cids);
 
-                    // generate order_item id
-                    String itemId = System.currentTimeMillis()+""+(new Random().nextInt(89999)+10000);
-                    OrderItem orderItem = new OrderItem(itemId, orderId, cv.getStoreId(), cv.getProductId(), cv.getProductName(),
-                            cv.getMainImg(), cv.getSalePrice(), cv.getProductNum(), cv.getSalePrice() * cv.getProductNum(),
-                            cv.getCartTime(), new Date(), 0);
-
-                    int i1 = orderItemDAO.insertOrderItem(orderItem);
-                }
-
-                //step 3: reduce the stock for each product
-                for(CartVO cv: cartVOS){
-
-                    int productId = cv.getProductId();
-                    int newStock = cv.getStock() - cv.getProductNum();
-                    int i1 = productDAO.updateStockById(productId, newStock);
-
-                }
-
-                // step 4: delete the cart
-                for(int cd: cidsList){
-                    cartDAO.deleteCartByCardId(cd);
-                }
                 return new ResultVO(RespondStatus.OK, "Order made successfully", orderId);
-
-            }else{
+            } else {
                 return new ResultVO(RespondStatus.NO, "Failed to increase", null);
             }
-
-        }else{
-            // out of the stock
+        } else {
             return new ResultVO(RespondStatus.NO, "Out of stock, fail to checkout", null);
         }
-
     }
+
+    private List<CartVO> getCartItems(String cids) {
+        String[] arr = cids.split(",");
+        List<Integer> cidsList = new ArrayList<>();
+        for (int i = 0; i < arr.length; i++) {
+            cidsList.add(Integer.parseInt(arr[i]));
+        }
+        return cartDAO.queryListCartByMultiCartId(cidsList);
+    }
+
     private boolean checkStockAvailability(List<CartVO> cartVOS) {
         for (CartVO cv : cartVOS) {
             if (cv.getProductNum() > cv.getStock()) {
@@ -118,6 +80,118 @@ public class OrderServiceImpl implements OrderService  {
         }
         return true;
     }
+
+    private String generateOrderId() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private int saveOrder(Order order) {
+        return orderDAO.insertOrder(order);
+    }
+
+    private void generateOrderItems(List<CartVO> cartVOS, String orderId) {
+        for (CartVO cv : cartVOS) {
+            String itemId = System.currentTimeMillis() + "" + (new Random().nextInt(89999) + 10000);
+            OrderItem orderItem = new OrderItem(itemId, orderId, cv.getStoreId(), cv.getProductId(), cv.getProductName(),
+                    cv.getMainImg(), cv.getSalePrice(), cv.getProductNum(), cv.getSalePrice() * cv.getProductNum(),
+                    cv.getCartTime(), new Date(), 0);
+
+            orderItemDAO.insertOrderItem(orderItem);
+        }
+    }
+    private void updateProductStock(List<CartVO> cartVOS) {
+        for (CartVO cv : cartVOS) {
+            int productId = cv.getProductId();
+            int newStock = cv.getStock() - cv.getProductNum();
+            productDAO.updateStockById(productId, newStock);
+        }
+    }
+    private void deleteCarts(String cids) {
+        String[] arr = cids.split(",");
+        List<Integer> cidsList = new ArrayList<>();
+        for (String cid : arr) {
+            cidsList.add(Integer.parseInt(cid));
+        }
+        for (int cd : cidsList) {
+            cartDAO.deleteCartByCardId(cd);
+        }
+    }
+
+    // which mean, if any one of sql operation(eg, add order item fails) then others won't success
+//    public ResultVO addOrder(String cids, Order order){
+//
+//
+//        //1. get the cart details based on the list of cid
+//        String[] arr= cids.split(",");
+//        List<Integer> cidsList = new ArrayList<>();
+//        for (int i = 0; i < arr.length; i++) {
+//            cidsList.add(Integer.parseInt(arr[i]));
+//
+//        }
+//        // list of cart to be checked out
+//        List<CartVO> cartVOS = cartDAO.queryListCartByMultiCartId(cidsList);
+//
+//        // check the stock, even though it already checked,
+//        // when user add the cart
+//        boolean f = checkStockAvailability(cartVOS);
+//
+//        if(f){
+//            // within stock
+//            //step 1:  save the order to 'orders' database, the data needs:
+//            // a. userId, receiver info(address) - from front end
+//            // b. total price/actual price - from front end
+//            // d. payment method - from front end
+//            // e. order status: Pending
+//            // f. create time
+//            order.setOrderStatus("To Pay");
+//            order.setCreateTime(new Date());
+//
+//            // generate the order number by using UUID
+//            String orderId = UUID.randomUUID().toString().replace("-", "");
+//            order.setOrderId(orderId);
+//
+//            // insert to the database
+//            int i = orderDAO.insertOrder(order);
+//            if(i > 0){
+//                //step 2. generate order snap for each cart, store into the 'order_item'
+//                for(CartVO cv: cartVOS){
+//
+//                    // generate order_item id
+//                    String itemId = System.currentTimeMillis()+""+(new Random().nextInt(89999)+10000);
+//                    OrderItem orderItem = new OrderItem(itemId, orderId, cv.getStoreId(), cv.getProductId(), cv.getProductName(),
+//                            cv.getMainImg(), cv.getSalePrice(), cv.getProductNum(), cv.getSalePrice() * cv.getProductNum(),
+//                            cv.getCartTime(), new Date(), 0);
+//
+//                    int i1 = orderItemDAO.insertOrderItem(orderItem);
+//                }
+//
+//                //step 3: reduce the stock for each product
+//                for(CartVO cv: cartVOS){
+//
+//                    int productId = cv.getProductId();
+//                    int newStock = cv.getStock() - cv.getProductNum();
+//                    int i1 = productDAO.updateStockById(productId, newStock);
+//
+//                }
+//
+//                // step 4: delete the cart
+//                for(int cd: cidsList){
+//                    cartDAO.deleteCartByCardId(cd);
+//                }
+//                return new ResultVO(RespondStatus.OK, "Order made successfully", orderId);
+//
+//            }else{
+//                return new ResultVO(RespondStatus.NO, "Failed to increase", null);
+//            }
+//
+//        }else{
+//            // out of the stock
+//            return new ResultVO(RespondStatus.NO, "Out of stock, fail to checkout", null);
+//        }
+//
+//    }
+//
+    //
 
     @Override
     public int updateOrderStatus(String orderId, String Orderstatus) {

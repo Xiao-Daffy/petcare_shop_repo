@@ -5,6 +5,7 @@ import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobHttpHeaders;
+import com.psm.blob.AzureStorageConfigure;
 import com.psm.petcare.entity.Store;
 import com.psm.petcare.service.StoreService;
 import com.psm.petcare.vo.RespondStatus;
@@ -31,47 +32,21 @@ public class StoreController {
     private StoreService storeService;
 
 
+    @Resource
+    private AzureStorageConfigure azureStorageConfigure;
 
-    @Value("${azure.storage.connection-string}")
-    private String connectionString;
-    @Value("${azure.storage.container-name}")
-    private String containerName;
-    @Value("${azure.storage.base-url}")
-    private String baseUrl;
-
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
+    //    @CrossOrigin(origins = "*", allowedHeaders = "*")
     @PutMapping("/imageupload")
-    public ResultVO photoUpload(@RequestBody MultipartFile[] file) throws IOException {
-        String fileUrl="";
+    public ResultVO fileUpload(@RequestBody MultipartFile[] file) throws IOException {
         if(file ==null){
             return new ResultVO(RespondStatus.NO, "Image", null);
         }else {
-            BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
-                    .connectionString(connectionString)
-                    .buildClient();
+            List<String> strings = azureStorageConfigure.uploadFiles(file);
 
-            BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
 
-            List<String> fileUrls = new ArrayList<>();
-            for (MultipartFile filee : file) {
-                String originalFileName = StringUtils.cleanPath(filee.getOriginalFilename());
-                String fileName = UUID.randomUUID().toString() + "-" + originalFileName;
-                BlobClient blobClient = containerClient.getBlobClient(fileName);
-
-                blobClient.upload(filee.getInputStream(), filee.getSize());
-                // Set content type metadata to specify that the blob is an image
-                BlobHttpHeaders headers = new BlobHttpHeaders()
-                        .setContentType(filee.getContentType());
-                blobClient.setHttpHeaders(headers);
-
-                fileUrl = baseUrl + "/" + containerName + "/" + fileName;
-                fileUrls.add(fileUrl);
-            }
-            System.out.println("file link: "+fileUrls);
-            return new ResultVO(RespondStatus.OK, "Image", fileUrl);
+            return new ResultVO(RespondStatus.NO, "Image", strings.get(0));
         }
     }
-
     // open new store
     @PostMapping("/open/{uid}")
     public ResultVO openStore(@PathVariable("uid") String uid, @RequestBody Store store){

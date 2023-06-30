@@ -32,8 +32,23 @@ public class PetController {
 
     @Resource
     private PetService petService;
+    @Resource
+    private AzureStorageConfigure azureStorageConfigure;
+
+    //    @CrossOrigin(origins = "*", allowedHeaders = "*")
+    @PutMapping("/imageupload")
+    public ResultVO fileUpload(@RequestBody MultipartFile[] file) throws IOException {
+        if(file ==null){
+            return new ResultVO(RespondStatus.NO, "Image", null);
+        }else {
+            List<String> strings = azureStorageConfigure.uploadFiles(file);
 
 
+            return new ResultVO(RespondStatus.NO, "Image", strings.get(0));
+        }
+    }
+
+/* Duplicated Code
     @Value("${azure.storage.connection-string}")
     private String connectionString;
     @Value("${azure.storage.container-name}")
@@ -73,7 +88,7 @@ public class PetController {
             return new ResultVO(RespondStatus.OK, "Image", fileUrl);
         }
     }
-
+*/
 
     // get list of pets
     @GetMapping("/list/{sid}")
